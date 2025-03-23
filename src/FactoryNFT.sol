@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {CardNFT} from "./CardNFT.sol";
@@ -11,59 +11,71 @@ contract NFTFactory is Ownable {
 
     using Strings for uint256;
 
-    CardNFT public cardNFT;
-    ColorNFT public colorNFT;
-    StarNFT public starNFT;
+    address public cardNFT;
+    address public colorNFT;
+    address public starNFT;
 
-    event NFTCreated(address indexed owner, string nftType, uint256 tokenId, string data);
-
-    constructor(address _cardNFT, address _colorNFT, address _starNFT) Ownable(msg.sender) {
-        cardNFT = CardNFT(_cardNFT);
-        colorNFT = ColorNFT(_colorNFT);
-        starNFT = StarNFT(_starNFT);
+    constructor(address _cardNFT, address _colorNFT, address _starNFT, address owner) Ownable(owner) {
+        cardNFT = _cardNFT;
+        colorNFT = _colorNFT;
+        starNFT = _starNFT;
     }
 
-    function generateRandomColor() internal view returns (string memory) {
-        //uint256 r = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender))) % 256;
-        //uint256 g = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, r))) % 256;
-        //uint256 b = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender, r, g))) % 256;
-        //return string(abi.encodePacked("(", r.toString(), ",", g.toString(), ",", b.toString(), ")"));
+    function generateRandomColor() internal view returns (ColorNFT.Color memory) {
+        uint256 r = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 256;
+        uint256 g = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r))) % 256;
+        uint256 b = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r, g))) % 256;
+        return ColorNFT.Color(r, g, b);
     }
 
-    function generateRandomCard() internal pure returns (string memory) {
+    function generateRandomCard() internal view returns (CardNFT.Card memory) {
         string[4] memory suits = ["S", "H", "D", "C"];
         string[13] memory values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-        //uint256 suitIndex = uint256(keccak256(abi.encodePacked(block.timestamp))) % 4;
-        //uint256 valueIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 13;
-        //return string(abi.encodePacked(suits[suitIndex], values[valueIndex]));
+        uint256 suitIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 4;
+        uint256 valueIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex))) % 13;
+        uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex, valueIndex))) % 100000;
+        return CardNFT.Card(string.concat(suits[suitIndex], values[valueIndex]), someRand);
     }
 
-    function generateRandomStar() internal pure returns (string memory) {
-        string[5] memory stars = ["VEGA", "SIRIUS", "ALPHA", "BETA", "GAMMA"];
-        //uint256 starIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % 5;
-        //return stars[starIndex];
+    function generateRandomStar() internal view returns (StarNFT.Star memory) {
+
+        string[30] memory stars = ["VEGA", "SIRIUS", "ALPHA", "BETA", "GAMMA",
+         "DELTA", "EPSILON", "ZETA", "ETA", "THETA", "IOTA", "KAPPA", "LAMBDA", 
+         "OMEGA", "POLARIS", "ARCTURUS", "RIGEL", "BETELGEUSE", "ALDEBARAN", 
+         "CANOPUS", "PROCYON", "CAPELLA", "ANTARES", "SPICA", "DENEB", "FOMALHAUT", 
+         "ALTAIR", "MIRACH", "CASTRO", "POLLUX"];
+
+        uint256 starIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 30;
+        uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, starIndex))) % 100000;
+        return StarNFT.Star(stars[starIndex], someRand);
     }
 
-    function createNFT(string memory nftType) public {
-        uint256 tokenId;
-        string memory data;
+    function createNFT(string memory nftType, address to) public returns (uint256) {
 
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
-            tokenId = cardNFT.totalSupply() + 1;
-            data = generateRandomCard();
-            cardNFT.mint(msg.sender, tokenId, data);
+            CardNFT.Card memory data = generateRandomCard();
+            CardNFT(cardNFT).mint(to, data); // Явное приведение типа
+            return CardNFT(cardNFT)._tokenId() - 1;
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
-            tokenId = colorNFT.totalSupply() + 1;
-            data = generateRandomColor();
-            colorNFT.mint(msg.sender, tokenId, data);
+            ColorNFT.Color memory data = generateRandomColor();
+            ColorNFT(colorNFT).mint(to, data); // Явное приведение типа
+            return ColorNFT(colorNFT)._tokenId() - 1;
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
-            tokenId = starNFT.totalSupply() + 1;
-            data = generateRandomStar();
-            starNFT.mint(msg.sender, tokenId, data); 
+            StarNFT.Star memory data = generateRandomStar();
+            StarNFT(starNFT).mint(to, data); // Явное приведение типа
+            return StarNFT(starNFT)._tokenId() - 1;
         } else {
             revert("Invalid NFT type");
         }
-
-        emit NFTCreated(msg.sender, nftType, tokenId, data);
+    }
+    function getBasePrice(string memory nftType, uint256 tokenId) external view returns (uint256) {
+        if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
+            return CardNFT(cardNFT)._price(tokenId);
+        } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
+            return ColorNFT(colorNFT)._price(tokenId);
+        } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
+            return StarNFT(starNFT)._price(tokenId);
+        }
+        revert("Invalid NFT type");
     }
 }
