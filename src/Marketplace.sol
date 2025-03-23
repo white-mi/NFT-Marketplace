@@ -2,7 +2,7 @@
 pragma solidity ^0.8.28;
 
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {SafeMath} from  "../lib/openzeppelin-contracts/contracts/utils/math/SafeMath.sol";
+import {Math} from  "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 
 interface INFT {
     function ownerOf(uint256 tokenId) external view returns (address);
@@ -10,8 +10,8 @@ interface INFT {
 }
 
 contract Marketplace is Ownable {
-    
-    using SafeMath for uint256;
+
+    using Math for uint256;
 
     struct Listing {
         address nftContract;

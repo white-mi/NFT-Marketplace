@@ -21,23 +21,24 @@ contract NFTFactory is Ownable {
         starNFT = StarNFT(_starNFT);
     }
 
-    function generateRandomColor() internal view returns (string memory) {
+
+    function generateRandomColor() internal view returns (ColorNFT.Color memory) {
         uint256 r = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 256;
         uint256 g = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r))) % 256;
         uint256 b = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r, g))) % 256;
-        return string(abi.encodePacked("(", r.toString(), ",", g.toString(), ",", b.toString(), ")"));
+        return ColorNFT.Color(r, g, b);
     }
 
-    function generateRandomCard() internal view returns (string memory) {
+    function generateRandomCard() internal view returns (CardNFT.Card memory) {
         string[4] memory suits = ["S", "H", "D", "C"];
         string[13] memory values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
         uint256 suitIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 4;
         uint256 valueIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex))) % 13;
-        return string(abi.encodePacked(suits[suitIndex], values[valueIndex],
-         uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex, valueIndex))) % 100000));
+        uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex, valueIndex))) % 100000;
+        return CardNFT.Card(string.concat(suits[suitIndex], values[valueIndex]), someRand);
     }
 
-    function generateRandomStar() internal view returns (string memory) {
+    function generateRandomStar() internal view returns (StarNFT.Star memory) {
 
         string[30] memory stars = ["VEGA", "SIRIUS", "ALPHA", "BETA", "GAMMA",
          "DELTA", "EPSILON", "ZETA", "ETA", "THETA", "IOTA", "KAPPA", "LAMBDA", 
@@ -46,22 +47,20 @@ contract NFTFactory is Ownable {
          "ALTAIR", "MIRACH", "CASTRO", "POLLUX"];
 
         uint256 starIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 30;
-        return string(abi.encodePacked(stars[starIndex],
-        uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, starIndex))) % 100000));
+        uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, starIndex))) % 100000;
+        return StarNFT.Star(stars[starIndex], someRand);
     }
 
     function createNFT(string memory nftType, address to) public {
 
-        string memory data;
-
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
-            data = generateRandomCard();
+            CardNFT.Card memory data = generateRandomCard();
             cardNFT.mint(to, data);
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
-            data = generateRandomColor();
+            ColorNFT.Color memory data = generateRandomColor();
             colorNFT.mint(to, data);
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
-            data = generateRandomStar();
+            StarNFT.Star memory data = generateRandomStar();
             starNFT.mint(to, data); 
         } else {
             revert("Invalid NFT type");
