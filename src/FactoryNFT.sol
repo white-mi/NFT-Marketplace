@@ -50,7 +50,7 @@ contract NFTFactory is Ownable {
         uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, starIndex))) % 100000));
     }
 
-    function createNFT(string memory nftType, address to) internal {
+    function createNFT(string memory nftType, address to) public {
 
         string memory data;
 
