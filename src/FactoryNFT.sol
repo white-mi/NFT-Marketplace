@@ -21,7 +21,6 @@ contract NFTFactory is Ownable {
         starNFT = StarNFT(_starNFT);
     }
 
-
     function generateRandomColor() internal view returns (ColorNFT.Color memory) {
         uint256 r = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 256;
         uint256 g = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r))) % 256;
@@ -51,17 +50,20 @@ contract NFTFactory is Ownable {
         return StarNFT.Star(stars[starIndex], someRand);
     }
 
-    function createNFT(string memory nftType, address to) public {
+    function createNFT(string memory nftType, address to) public returns (uint256) {
 
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
             CardNFT.Card memory data = generateRandomCard();
             cardNFT.mint(to, data);
+            return cardNFT._tokenId();
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
             ColorNFT.Color memory data = generateRandomColor();
             colorNFT.mint(to, data);
+            return colorNFT._tokenId();
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
             StarNFT.Star memory data = generateRandomStar();
             starNFT.mint(to, data); 
+            return starNFT._tokenId();
         } else {
             revert("Invalid NFT type");
         }
