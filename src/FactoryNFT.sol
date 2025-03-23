@@ -55,15 +55,15 @@ contract NFTFactory is Ownable {
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
             CardNFT.Card memory data = generateRandomCard();
             cardNFT.mint(to, data);
-            return cardNFT._tokenId();
+            return cardNFT._tokenId() - 1;
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
             ColorNFT.Color memory data = generateRandomColor();
             colorNFT.mint(to, data);
-            return colorNFT._tokenId();
+            return colorNFT._tokenId() - 1;
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
             StarNFT.Star memory data = generateRandomStar();
             starNFT.mint(to, data); 
-            return starNFT._tokenId();
+            return starNFT._tokenId() - 1;
         } else {
             revert("Invalid NFT type");
         }
