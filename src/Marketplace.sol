@@ -9,6 +9,7 @@ import {NFTFactory} from "./FactoryNFT.sol";
 contract Marketplace is Ownable {
     using Math for uint256;
 
+
     struct Listing {
         address seller;
         address nftContract;

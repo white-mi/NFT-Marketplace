@@ -5,6 +5,7 @@ import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.so
 import {CardNFT} from "./CardNFT.sol";
 import {ColorNFT} from "./ColorNFT.sol";
 import {StarNFT} from "./StarNFT.sol";
+import {RandomNumberConsumer} from "./random.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract NFTFactory is Ownable {
@@ -14,17 +15,25 @@ contract NFTFactory is Ownable {
     address public cardNFT;
     address public colorNFT;
     address public starNFT;
+    RandomNumberConsumer public rng;
 
-    constructor(address _cardNFT, address _colorNFT, address _starNFT, address owner) Ownable(owner) {
+    constructor(address _cardNFT, address _colorNFT, address _starNFT, address owner, address _rng) Ownable(owner) {
         cardNFT = _cardNFT;
         colorNFT = _colorNFT;
         starNFT = _starNFT;
+        rng = RandomNumberConsumer(_rng);
     }
 
-    function generateRandomColor() internal view returns (ColorNFT.Color memory) {
-        uint256 r = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 256;
-        uint256 g = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r))) % 256;
-        uint256 b = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, r, g))) % 256;
+    function generateRandomColor() internal returns (ColorNFT.Color memory) {
+        bytes32 requestId = rng.getRandomNumber();
+        uint256 r1 = rng.randomResult();
+        requestId = rng.getRandomNumber();
+        uint256 r2 = rng.randomResult();
+        requestId = rng.getRandomNumber();
+        uint256 r3 = rng.randomResult();
+        uint256 r = uint256(r1) % 256;
+        uint256 g = uint256(r2) % 256;
+        uint256 b = uint256(r3) % 256;
         return ColorNFT.Color(r, g, b);
     }
 
