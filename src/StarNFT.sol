@@ -7,26 +7,52 @@ import {Base64} from "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract StarNFT is ERC721, Ownable {
-
     using Strings for uint256;
 
     struct Star {
         string star;
         uint256 num;
     }
+
     mapping(uint256 _tokenId => Star) public _starData;
     mapping(uint256 _tokenId => uint256) public _price;
     uint256 public _tokenId;
 
     constructor(address owner) ERC721("StarNFT", "STAR") Ownable(owner) {}
 
-    function get_price(Star memory data) pure internal returns (uint256) {
-
-        string[30] memory stars = ["VEGA", "SIRIUS", "ALPHA", "BETA", "GAMMA",
-         "DELTA", "EPSILON", "ZETA", "ETA", "THETA", "IOTA", "KAPPA", "LAMBDA", 
-         "OMEGA", "POLARIS", "ARCTURUS", "RIGEL", "BETELGEUSE", "ALDEBARAN", 
-         "CANOPUS", "PROCYON", "CAPELLA", "ANTARES", "SPICA", "DENEB", "FOMALHAUT", 
-         "ALTAIR", "MIRACH", "CASTRO", "POLLUX"];
+    function get_price(Star memory data) internal pure returns (uint256) {
+        string[30] memory stars = [
+            "VEGA",
+            "SIRIUS",
+            "ALPHA",
+            "BETA",
+            "GAMMA",
+            "DELTA",
+            "EPSILON",
+            "ZETA",
+            "ETA",
+            "THETA",
+            "IOTA",
+            "KAPPA",
+            "LAMBDA",
+            "OMEGA",
+            "POLARIS",
+            "ARCTURUS",
+            "RIGEL",
+            "BETELGEUSE",
+            "ALDEBARAN",
+            "CANOPUS",
+            "PROCYON",
+            "CAPELLA",
+            "ANTARES",
+            "SPICA",
+            "DENEB",
+            "FOMALHAUT",
+            "ALTAIR",
+            "MIRACH",
+            "CASTRO",
+            "POLLUX"
+        ];
 
         uint256 index = 0;
 
@@ -51,9 +77,10 @@ contract StarNFT is ERC721, Ownable {
         _requireOwned(tokenId);
 
         Star memory star = _starData[tokenId];
-        return string(abi.encodePacked(
-            "data:json;base64,",
-            Base64.encode(bytes(string(abi.encodePacked(star.star, star.num.toString()))))
-        ));
+        return string(
+            abi.encodePacked(
+                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(star.star, star.num.toString()))))
+            )
+        );
     }
 }
