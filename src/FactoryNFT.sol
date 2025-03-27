@@ -9,7 +9,6 @@ import {RandomNumberConsumer} from "./random.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract NFTFactory is Ownable {
-
     using Strings for uint256;
 
     address public cardNFT;
@@ -42,17 +41,44 @@ contract NFTFactory is Ownable {
         string[13] memory values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
         uint256 suitIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 4;
         uint256 valueIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex))) % 13;
-        uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex, valueIndex))) % 100000;
+        uint256 someRand =
+            uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, suitIndex, valueIndex))) % 100000;
         return CardNFT.Card(string.concat(suits[suitIndex], values[valueIndex]), someRand);
     }
 
     function generateRandomStar() internal view returns (StarNFT.Star memory) {
-
-        string[30] memory stars = ["VEGA", "SIRIUS", "ALPHA", "BETA", "GAMMA",
-         "DELTA", "EPSILON", "ZETA", "ETA", "THETA", "IOTA", "KAPPA", "LAMBDA", 
-         "OMEGA", "POLARIS", "ARCTURUS", "RIGEL", "BETELGEUSE", "ALDEBARAN", 
-         "CANOPUS", "PROCYON", "CAPELLA", "ANTARES", "SPICA", "DENEB", "FOMALHAUT", 
-         "ALTAIR", "MIRACH", "CASTRO", "POLLUX"];
+        string[30] memory stars = [
+            "VEGA",
+            "SIRIUS",
+            "ALPHA",
+            "BETA",
+            "GAMMA",
+            "DELTA",
+            "EPSILON",
+            "ZETA",
+            "ETA",
+            "THETA",
+            "IOTA",
+            "KAPPA",
+            "LAMBDA",
+            "OMEGA",
+            "POLARIS",
+            "ARCTURUS",
+            "RIGEL",
+            "BETELGEUSE",
+            "ALDEBARAN",
+            "CANOPUS",
+            "PROCYON",
+            "CAPELLA",
+            "ANTARES",
+            "SPICA",
+            "DENEB",
+            "FOMALHAUT",
+            "ALTAIR",
+            "MIRACH",
+            "CASTRO",
+            "POLLUX"
+        ];
 
         uint256 starIndex = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao))) % 30;
         uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, starIndex))) % 100000;
@@ -60,7 +86,6 @@ contract NFTFactory is Ownable {
     }
 
     function createNFT(string memory nftType, address to) public returns (uint256) {
-
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
             CardNFT.Card memory data = generateRandomCard();
             CardNFT(cardNFT).mint(to, data); // Явное приведение типа
@@ -77,6 +102,7 @@ contract NFTFactory is Ownable {
             revert("Invalid NFT type");
         }
     }
+
     function getBasePrice(string memory nftType, uint256 tokenId) external view returns (uint256) {
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
             return CardNFT(cardNFT)._price(tokenId);

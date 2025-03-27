@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {Math} from "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
+import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
+import {UUPSUpgradeable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/UUPSUpgradeable.sol";
+
 import {NFTFactory} from "./FactoryNFT.sol";
 
-contract Marketplace is Ownable {
+contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
     using Math for uint256;
-
 
     struct Listing {
         address seller;
         address nftContract;
         uint256 tokenId;
-        string nftType; 
-        bool isActive;
+        string nftType;
     }
 
     struct Curve {
@@ -27,8 +28,10 @@ contract Marketplace is Ownable {
     NFTFactory public factory;
     mapping(address => Curve) public curves;
     mapping(bytes32 => Listing) public listings;
+    mapping(bytes32 => uint256) public listingIndex;
     bytes32[] public allListings;
     uint256 public platformFee = 250;
+    uint256 public allTotalListed = 0;
 
     event NFTMinted(address indexed owner, address nftContract, uint256 tokenId);
     event NFTListed(bytes32 listingId, address indexed seller, string nftType, uint256 tokenId, uint256 price);
@@ -48,7 +51,7 @@ contract Marketplace is Ownable {
     function mintNFT(string memory nftType) external {
         address nftContract = _getContractByType(nftType);
         require(nftContract != address(0), "Invalid NFT type");
-        
+
         uint256 tokenId = factory.createNFT(nftType, msg.sender);
         curves[nftContract].totalMinted += 1;
         emit NFTMinted(msg.sender, nftContract, tokenId);
@@ -59,30 +62,35 @@ contract Marketplace is Ownable {
         require(IERC721(nftContract).ownerOf(tokenId) == msg.sender, "Not owner");
 
         IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
-        
-        bytes32 listingId = keccak256(abi.encodePacked(nftContract, tokenId));
-        listings[listingId] = Listing({
-            seller: msg.sender,
-            nftContract: nftContract,
-            tokenId: tokenId,
-            nftType: nftType,
-            isActive: true
-        });
+
+        bytes32 listingId = keccak256(abi.encodePacked(block.timestamp, nftContract, tokenId));
+        listings[listingId] =
+            Listing({seller: msg.sender, nftContract: nftContract, tokenId: tokenId, nftType: nftType});
 
         allListings.push(listingId);
+        listingIndex[listingId] = allListings.length - 1;
         curves[nftContract].totalListed += 1;
-        
+        allTotalListed += 1;
+
         emit NFTListed(listingId, msg.sender, nftType, tokenId, calculatePrice(listingId));
     }
 
-    function buyNFT(bytes32 listingId) external payable {
+    function buyNFT(bytes32 listingId) external payable nonReentrant {
         Listing storage listing = listings[listingId];
-        require(listing.isActive, "Listing inactive");
 
         uint256 currentPrice = calculatePrice(listingId);
         require(msg.value >= currentPrice, "Insufficient funds");
 
         curves[listing.nftContract].totalListed -= 1;
+        allTotalListed -= 1;
+
+        uint256 index = listingIndex[listingId];
+        bytes32 lastListingId = allListings[allListings.length - 1];
+        allListings[index] = lastListingId;
+        listingIndex[lastListingId] = index;
+        allListings.pop();
+        delete listings[listingId];
+        delete listingIndex[listingId];
 
         IERC721(listing.nftContract).transferFrom(address(this), msg.sender, listing.tokenId);
 
@@ -93,21 +101,17 @@ contract Marketplace is Ownable {
             payable(msg.sender).transfer(msg.value - currentPrice);
         }
 
-        listing.isActive = false;
         emit NFTBought(listingId, msg.sender, currentPrice);
     }
 
     function getActiveListings() external view returns (Listing[] memory) {
         Listing[] memory active = new Listing[](allListings.length);
         uint256 count;
-        
-        for(uint256 i = 0; i < allListings.length; i++) {
-            if(listings[allListings[i]].isActive) {
-                active[count] = listings[allListings[i]];
-                count++;
-            }
+
+        for (uint256 i = 0; i < allListings.length; i++) {
+            active[count] = listings[allListings[i]];
         }
-        
+
         return active;
     }
 
@@ -115,7 +119,8 @@ contract Marketplace is Ownable {
         Listing memory listing = listings[listingId];
         Curve memory curve = curves[listing.nftContract];
         uint256 basePrice = factory.getBasePrice(listing.nftType, listing.tokenId);
-        return basePrice * (curve.exponent ** (curve.totalMinted-curve.totalListed+1));
+        return basePrice * (curve.exponent ** (curve.totalMinted - curve.totalListed + 1))
+            * (allTotalListed + 1 / curve.totalListed + 1);
     }
 
     function _getContractByType(string memory nftType) private view returns (address) {
@@ -126,9 +131,8 @@ contract Marketplace is Ownable {
     }
 
     function _isSupportedContract(address nftContract) private view returns (bool) {
-        return nftContract == factory.cardNFT() ||
-               nftContract == factory.colorNFT() ||
-               nftContract == factory.starNFT();
+        return nftContract == factory.cardNFT() || nftContract == factory.colorNFT() || nftContract == factory.starNFT();
     }
 
+    function _authorizeUpgrade(address) internal override onlyOwner {}
 }
