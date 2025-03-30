@@ -85,7 +85,7 @@ contract CardNFT is ERC721, Ownable {
             }
         }
 
-        return ((52 - index) + data.num / 10000) * 10000000 gwei;
+        return ((52 - index) + data.num / 10000) * 1000000 gwei;
     }
 
     function mint(address to, Card memory data) public onlyOwner {
