@@ -23,7 +23,7 @@ contract ColorNFT is ERC721, Ownable {
 
     function get_price(Color memory data) internal pure returns (uint256) {
         uint256 max_price = 256 * 256 + 256 * 256 + 256 * 256;
-        return ((data.red * data.red + data.blue * data.blue + data.green * data.green) * 100000000 gwei) / max_price;
+        return ((data.red * data.red + data.blue * data.blue + data.green * data.green) * 50000000) / max_price;
     }
 
     function mint(address to, Color memory data) public onlyOwner {

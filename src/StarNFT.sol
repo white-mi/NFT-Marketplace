@@ -63,7 +63,7 @@ contract StarNFT is ERC721, Ownable {
             }
         }
 
-        return ((30 - index) + data.num / 10000) * 10000000 gwei;
+        return ((30 - index) + data.num / 10000) * 1000000;
     }
 
     function mint(address to, Star memory data) public onlyOwner {
@@ -79,7 +79,7 @@ contract StarNFT is ERC721, Ownable {
         Star memory star = _starData[tokenId];
         return string(
             abi.encodePacked(
-                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(star.star, star.num.toString()))))
+                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(star.star, "-", star.num.toString()))))
             )
         );
     }
