@@ -26,23 +26,24 @@ contract NFTFactory is Ownable, AccessControl {
         _grantRole(ADMIN_ROLE, owner);
     }
 
-    function getRandomNumber() internal view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao)));
+    function getRandomNumber(uint256 someNum1, uint256 someNum2) internal view returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, someNum1, someNum2)));
     }
 
     function generateRandomColor() internal view returns (ColorNFT.Color memory) {
-        uint256 r = uint256(getRandomNumber()) % 256;
-        uint256 g = uint256(getRandomNumber()) % 256;
-        uint256 b = uint256(getRandomNumber()) % 256;
+        uint256 r = uint256(getRandomNumber(0, 0)) % 256;
+        uint256 g = uint256(getRandomNumber(r, 0)) % 256;
+        uint256 b = uint256(getRandomNumber(r, g)) % 256;
         return ColorNFT.Color(r, g, b);
     }
 
     function generateRandomCard() internal view returns (CardNFT.Card memory) {
         string[4] memory suits = ["S", "H", "D", "C"];
         string[13] memory values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-        uint256 suitIndex = uint256(getRandomNumber()) % 4;
-        uint256 valueIndex = uint256(keccak256(abi.encodePacked(getRandomNumber(), suitIndex))) % 13;
-        uint256 someRand = uint256(keccak256(abi.encodePacked(getRandomNumber(), suitIndex, valueIndex))) % 100000;
+        uint256 suitIndex = uint256(getRandomNumber(666, 999)) % 4;
+        uint256 valueIndex = uint256(keccak256(abi.encodePacked(getRandomNumber(suitIndex, 777), suitIndex))) % 13;
+        uint256 someRand =
+            uint256(keccak256(abi.encodePacked(getRandomNumber(suitIndex, valueIndex), suitIndex, valueIndex))) % 100000;
         return CardNFT.Card(string.concat(suits[suitIndex], values[valueIndex]), someRand);
     }
 
@@ -80,8 +81,8 @@ contract NFTFactory is Ownable, AccessControl {
             "POLLUX"
         ];
 
-        uint256 starIndex = getRandomNumber() % 30;
-        uint256 someRand = uint256(keccak256(abi.encodePacked(getRandomNumber(), starIndex))) % 100000;
+        uint256 starIndex = getRandomNumber(16, 98) % 30;
+        uint256 someRand = uint256(keccak256(abi.encodePacked(getRandomNumber(starIndex, 1698), starIndex))) % 100000;
         return StarNFT.Star(stars[starIndex], someRand);
     }
 

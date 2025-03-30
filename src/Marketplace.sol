@@ -43,19 +43,18 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
         factory = NFTFactory(_factory);
         _initCurves();
         _initMints();
-
     }
 
     function _initCurves() private {
-        curves[factory.colorNFT()] = Curve(2, 0, 0);
-        curves[factory.cardNFT()] = Curve(3, 0, 0);
-        curves[factory.starNFT()] = Curve(5, 0, 0);
+        curves[factory.colorNFT()] = Curve(200, 0, 0);
+        curves[factory.cardNFT()] = Curve(180, 0, 0);
+        curves[factory.starNFT()] = Curve(160, 0, 0);
     }
 
     function _initMints() private {
-        mintprice["color"]= 16764450 * 2;
-        mintprice["card"] = 31000000 * 3;
-        mintprice["star"] = 20000000 * 5;
+        mintprice["color"] = 16764450 * curves[factory.colorNFT()].exponent / (curves[factory.colorNFT()].exponent - 2);
+        mintprice["card"] = 31000000 * curves[factory.cardNFT()].exponent / (curves[factory.cardNFT()].exponent - 2);
+        mintprice["star"] = 20000000 * curves[factory.starNFT()].exponent / (curves[factory.starNFT()].exponent - 2);
     }
 
     function mintNFT(string memory nftType) external payable {
@@ -95,14 +94,13 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
         allTotalListed -= 1;
 
         IERC721(listing.nftContract).transferFrom(listing.seller, msg.sender, listing.tokenId);
-        
+
         uint256 fee = (currentPrice * platformFee) / 10000;
         payable(owner()).transfer(fee);
         payable(listing.seller).transfer(currentPrice - fee);
         if (msg.value > currentPrice) {
             payable(msg.sender).transfer(msg.value - currentPrice);
         }
-
 
         emit NFTBought(listingId, msg.sender, currentPrice);
 
@@ -149,16 +147,16 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
         Listing memory listing = listings[listingId];
         Curve memory curve = curves[listing.nftContract];
         uint256 basePrice = factory.getBasePrice(listing.nftType, listing.tokenId);
-        uint256 maxim = 1000000;
-        for (uint256 i = 0; i < curve.totalMinted - curve.totalListed; i++){
-            maxim = maxim * curve.exponent;
-            maxim  = maxim / (curve.exponent-1);
-            if (maxim > 10000000){
-                maxim = 10000000;
+        uint256 exp = 1000000;
+        for (uint256 i = 0; i < curve.totalMinted - curve.totalListed; i++) {
+            exp = exp * curve.exponent;
+            exp = exp / (curve.exponent - 2);
+            if (exp > 10000000) {
+                exp = 10000000;
                 break;
             }
         }
-        return basePrice * maxim / 1000000 * (allTotalListed + 1 / curve.totalListed + 1);
+        return basePrice * exp / 1000000;
     }
 
     function _getContractByType(string memory nftType) private view returns (address) {

@@ -85,7 +85,7 @@ contract CardNFT is ERC721, Ownable {
             }
         }
 
-        return ((52 - index) + data.num / 10000) * 1000000 gwei;
+        return ((52 - index) + data.num / 10000) * 1000000;
     }
 
     function mint(address to, Card memory data) public onlyOwner {
@@ -101,7 +101,7 @@ contract CardNFT is ERC721, Ownable {
         Card memory card = _cardData[tokenId];
         return string(
             abi.encodePacked(
-                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(card.card, card.num.toString()))))
+                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(card.card, "-", card.num.toString()))))
             )
         );
     }
