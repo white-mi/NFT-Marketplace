@@ -2,25 +2,21 @@
 pragma solidity ^0.8.28;
 
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {CardNFT} from "./CardNFT.sol";
 import {ColorNFT} from "./ColorNFT.sol";
 import {StarNFT} from "./StarNFT.sol";
-import {RandomNumberConsumer} from "./random.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {AccessControl} from "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 
 contract NFTFactory is Ownable, AccessControl {
     using Strings for uint256;
 
-    address public cardNFT;
     address public colorNFT;
     address public starNFT;
 
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     address public currentImplementation;
 
-    constructor(address _cardNFT, address _colorNFT, address _starNFT, address owner) Ownable(owner) {
-        cardNFT = _cardNFT;
+    constructor(address _colorNFT, address _starNFT, address owner) Ownable(owner) {
         colorNFT = _colorNFT;
         starNFT = _starNFT;
         _grantRole(ADMIN_ROLE, owner);
@@ -35,15 +31,6 @@ contract NFTFactory is Ownable, AccessControl {
         uint256 g = uint256(getRandomNumber()) % 256;
         uint256 b = uint256(getRandomNumber()) % 256;
         return ColorNFT.Color(r, g, b);
-    }
-
-    function generateRandomCard() internal view returns (CardNFT.Card memory) {
-        string[4] memory suits = ["S", "H", "D", "C"];
-        string[13] memory values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
-        uint256 suitIndex = uint256(getRandomNumber()) % 4;
-        uint256 valueIndex = uint256(keccak256(abi.encodePacked(getRandomNumber(), suitIndex))) % 13;
-        uint256 someRand = uint256(keccak256(abi.encodePacked(getRandomNumber(), suitIndex, valueIndex))) % 100000;
-        return CardNFT.Card(string.concat(suits[suitIndex], values[valueIndex]), someRand);
     }
 
     function generateRandomStar() internal view returns (StarNFT.Star memory) {
@@ -86,11 +73,7 @@ contract NFTFactory is Ownable, AccessControl {
     }
 
     function createNFT(string memory nftType, address to) external onlyOwner returns (uint256) {
-        if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
-            CardNFT.Card memory data = generateRandomCard();
-            CardNFT(cardNFT).mint(to, data); // Явное приведение типа
-            return CardNFT(cardNFT)._tokenId() - 1;
-        } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
+        if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
             ColorNFT.Color memory data = generateRandomColor();
             ColorNFT(colorNFT).mint(to, data); // Явное приведение типа
             return ColorNFT(colorNFT)._tokenId() - 1;
@@ -104,9 +87,7 @@ contract NFTFactory is Ownable, AccessControl {
     }
 
     function getBasePrice(string memory nftType, uint256 tokenId) external view onlyOwner returns (uint256) {
-        if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
-            return CardNFT(cardNFT)._price(tokenId);
-        } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
+        if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
             return ColorNFT(colorNFT)._price(tokenId);
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
             return StarNFT(starNFT)._price(tokenId);

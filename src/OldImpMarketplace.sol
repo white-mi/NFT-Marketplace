@@ -23,13 +23,6 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
         uint256 exponent;
         uint256 totalListed;
         uint256 totalMinted;
-        string nftType;
-    }
-
-    struct Curve {
-        uint256 exponent;
-        uint256 totalListed;
-        uint256 totalMinted;
     }
 
     NFTFactory public factory;
@@ -51,7 +44,6 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
 
     function _initCurves() private {
         curves[factory.colorNFT()] = Curve(2, 0, 0);
-        curves[factory.cardNFT()] = Curve(3, 0, 0);
         curves[factory.starNFT()] = Curve(5, 0, 0);
     }
 
@@ -150,14 +142,13 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
     }
 
     function _getContractByType(string memory nftType) private view returns (address) {
-        if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) return factory.cardNFT();
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) return factory.colorNFT();
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) return factory.starNFT();
         return address(0);
     }
 
     function _isSupportedContract(address nftContract) private view returns (bool) {
-        return nftContract == factory.cardNFT() || nftContract == factory.colorNFT() || nftContract == factory.starNFT();
+        return nftContract == factory.cardNFT() || nftContract == factory.colorNFT();
     }
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
