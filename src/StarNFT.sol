@@ -20,7 +20,7 @@ contract StarNFT is ERC721, Ownable {
 
     constructor(address owner) ERC721("StarNFT", "STAR") Ownable(owner) {}
 
-        function get_price(Star memory data) internal pure returns (uint256) {
+    function get_price(Star memory data) internal pure returns (uint256) {
         string[30] memory stars = [
             "VEGA",
             "SIRIUS",
@@ -65,7 +65,6 @@ contract StarNFT is ERC721, Ownable {
 
         return ((30 - index) + data.num / 10000) * 1000000;
     }
-
 
     function mint(address to, Star memory data) public onlyOwner {
         _starData[_tokenId] = data;

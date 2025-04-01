@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
-
+/*
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {Math} from "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
@@ -169,3 +169,4 @@ contract Marketplace is Ownable, ReentrancyGuard, UUPSUpgradeable {
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 }
+*/

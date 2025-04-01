@@ -5,7 +5,6 @@ import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.so
 import {CardNFT} from "./CardNFT.sol";
 import {ColorNFT} from "./ColorNFT.sol";
 import {StarNFT} from "./StarNFT.sol";
-import {RandomNumberConsumer} from "./random.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 import {AccessControl} from "../lib/openzeppelin-contracts/contracts/access/AccessControl.sol";
 
@@ -27,27 +26,28 @@ contract NFTFactory is Ownable, AccessControl {
     }
 
     function getRandomNumber(uint256 someNum1, uint256 someNum2) internal view returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, someNum1, someNum2)));
+        return uint256(keccak256(abi.encodePacked(block.timestamp, block.number, someNum1, someNum2)));
     }
 
-    function generateRandomColor() internal view returns (ColorNFT.Color memory) {
-        uint256 r = uint256(getRandomNumber(0, 0)) % 256;
-        uint256 g = uint256(getRandomNumber(r, 0)) % 256;
-        uint256 b = uint256(getRandomNumber(r, g)) % 256;
+    function generateRandomColor(uint256 randomness) internal view returns (ColorNFT.Color memory) {
+        uint256 r = uint256(getRandomNumber(0, 0) + randomness) % 256;
+        uint256 g = uint256(getRandomNumber(r, 0) + randomness) % 256;
+        uint256 b = uint256(getRandomNumber(r, g) + randomness) % 256;
         return ColorNFT.Color(r, g, b);
     }
 
-    function generateRandomCard() internal view returns (CardNFT.Card memory) {
+    function generateRandomCard(uint256 randomness) internal view returns (CardNFT.Card memory) {
         string[4] memory suits = ["S", "H", "D", "C"];
         string[13] memory values = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
         uint256 suitIndex = uint256(getRandomNumber(666, 999)) % 4;
         uint256 valueIndex = uint256(keccak256(abi.encodePacked(getRandomNumber(suitIndex, 777), suitIndex))) % 13;
-        uint256 someRand =
-            uint256(keccak256(abi.encodePacked(getRandomNumber(suitIndex, valueIndex), suitIndex, valueIndex))) % 100000;
+        uint256 someRand = uint256(
+            keccak256(abi.encodePacked(randomness, getRandomNumber(suitIndex, valueIndex), suitIndex, valueIndex))
+        ) % 100000;
         return CardNFT.Card(string.concat(suits[suitIndex], values[valueIndex]), someRand);
     }
 
-    function generateRandomStar() internal view returns (StarNFT.Star memory) {
+    function generateRandomStar(uint256 randomness) internal view returns (StarNFT.Star memory) {
         string[30] memory stars = [
             "VEGA",
             "SIRIUS",
@@ -82,21 +82,22 @@ contract NFTFactory is Ownable, AccessControl {
         ];
 
         uint256 starIndex = getRandomNumber(16, 98) % 30;
-        uint256 someRand = uint256(keccak256(abi.encodePacked(getRandomNumber(starIndex, 1698), starIndex))) % 100000;
+        uint256 someRand =
+            uint256(keccak256(abi.encodePacked(randomness, getRandomNumber(starIndex, 1698), starIndex))) % 100000;
         return StarNFT.Star(stars[starIndex], someRand);
     }
 
-    function createNFT(string memory nftType, address to) external onlyOwner returns (uint256) {
+    function createNFT(string memory nftType, address to, uint256 randomness) external onlyOwner returns (uint256) {
         if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("card"))) {
-            CardNFT.Card memory data = generateRandomCard();
+            CardNFT.Card memory data = generateRandomCard(randomness);
             CardNFT(cardNFT).mint(to, data); // Явное приведение типа
             return CardNFT(cardNFT)._tokenId() - 1;
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("color"))) {
-            ColorNFT.Color memory data = generateRandomColor();
+            ColorNFT.Color memory data = generateRandomColor(randomness);
             ColorNFT(colorNFT).mint(to, data); // Явное приведение типа
             return ColorNFT(colorNFT)._tokenId() - 1;
         } else if (keccak256(abi.encodePacked(nftType)) == keccak256(abi.encodePacked("star"))) {
-            StarNFT.Star memory data = generateRandomStar();
+            StarNFT.Star memory data = generateRandomStar(randomness);
             StarNFT(starNFT).mint(to, data); // Явное приведение типа
             return StarNFT(starNFT)._tokenId() - 1;
         } else {

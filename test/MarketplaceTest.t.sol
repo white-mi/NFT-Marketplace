@@ -32,7 +32,7 @@ contract MarketplaceTest is Test {
 
         factory = new NFTFactory(address(cardNFT), address(colorNFT), address(starNFT), owner);
 
-        marketplace = new Marketplace(payable(address(factory)));
+        marketplace = new Marketplace(payable(address(factory)), );
         factory.transferOwnership(address(marketplace));
         cardNFT.transferOwnership(address(factory));
         colorNFT.transferOwnership(address(factory));
