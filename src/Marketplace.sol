@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {VRFCoordinatorV2Interface} from "../lib/chainlink/contracts/src/v0.8/vrf/interfaces/VRFCoordinatorV2Interface.sol";
-import {VRFConsumerBaseV2} from "../lib/chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
-import {ConfirmedOwner} from "../lib/chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
+import {VRFConsumerBaseV2Plus} from "../lib/chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "../lib/chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {Math} from "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
@@ -11,7 +10,7 @@ import {UUPSUpgradeable} from "../lib/openzeppelin-contracts/contracts/proxy/uti
 
 import {NFTFactory} from "./FactoryNFT.sol";
 
-contract Marketplace is VRFConsumerBaseV2, ReentrancyGuard, UUPSUpgradeable, ConfirmedOwner {
+contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable {
     using Math for uint256;
 
     struct Listing {
@@ -34,23 +33,21 @@ contract Marketplace is VRFConsumerBaseV2, ReentrancyGuard, UUPSUpgradeable, Con
     }
 
     struct RequestStatus {
-        bool fulfilled; // whether the request has been successfully fulfilled
-        bool exists; // whether a requestId exists
+        bool fulfilled; 
+        bool exists;
         uint256[] randomWords;
     }
 
     bytes32 internal keyHash;
     uint256 public randomResult;
-    uint64 internal s_subscriptionId;
+    uint256 public s_subscriptionId;
     uint256[] public requestIds;
     uint256 public lastRequestId;
     uint32 internal callbackGasLimit = 100000;
     uint16 internal requestConfirmations = 3;
     uint32 internal numWords = 2;
-    VRFCoordinatorV2Interface public COORDINATOR;
     mapping(uint256 => MintRequest) public mintRequests;
-    mapping(uint256 => RequestStatus)
-        public s_requests; /* requestId --> requestStatus */
+    mapping(uint256 => RequestStatus) public s_requests; 
 
     NFTFactory public factory;
     mapping(address => Curve) public curves;
@@ -67,15 +64,11 @@ contract Marketplace is VRFConsumerBaseV2, ReentrancyGuard, UUPSUpgradeable, Con
     event NFTBought(bytes32 listingId, address indexed buyer, uint256 price);
     event NFTReturned(bytes32 listingId, address indexed keeper);
 
-    constructor(address payable _factory, uint64 subscriptionId)
-        VRFConsumerBaseV2(
+    constructor(address payable _factory, uint256 subscriptionId)
+        VRFConsumerBaseV2Plus(
             0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B // VRF Coordinator
         )
-        ConfirmedOwner(msg.sender)
     {
-        COORDINATOR = VRFCoordinatorV2Interface(
-            0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B
-        );
         s_subscriptionId = subscriptionId;
         factory = NFTFactory(_factory);
         _initCurves();
@@ -90,38 +83,64 @@ contract Marketplace is VRFConsumerBaseV2, ReentrancyGuard, UUPSUpgradeable, Con
 
     function _initMints() internal {
         mintprice["color"] = 16764450 * curves[factory.colorNFT()].exponent / (curves[factory.colorNFT()].exponent - 2);
-        mintprice["card"] = 31000000 * curves[factory.cardNFT()].exponent / (curves[factory.cardNFT()].exponent - 2);
+        mintprice["card"] = 19300000 * curves[factory.cardNFT()].exponent / (curves[factory.cardNFT()].exponent - 2);
         mintprice["star"] = 20000000 * curves[factory.starNFT()].exponent / (curves[factory.starNFT()].exponent - 2);
     }
 
     function mintNFT(string memory nftType) external payable nonReentrant {
-        require(msg.value == mintprice[nftType], "Incorrect payment");
+        uint256 currentPrice = getMintPrice(nftType);
+        require(msg.value >= currentPrice, "Insufficient funds");
 
-        uint256 requestId = COORDINATOR.requestRandomWords(
-            keyHash,
-            s_subscriptionId,
-            requestConfirmations,
-            callbackGasLimit,
-            numWords
+        uint256 requestID = requestRandomWords(true);
+        mintRequests[requestID] = MintRequest(msg.sender, nftType, msg.value);
+
+        if (msg.value > currentPrice) {
+            payable(msg.sender).transfer(msg.value - currentPrice);
+        }
+        emit MintStarted(requestID, msg.sender);
+    }
+
+    function getMintPrice(string memory nftType) public view returns (uint256) {
+        address nftContract = _getContractByType(nftType);
+        require(nftContract != address(0), "Invalid NFT type");
+
+        if (totalListed > 1000) {
+            return mintprice[nftType];
+        } else {
+            return (mintprice[nftType] / 5) + (mintprice[nftType] / 1250) * totalListed;
+        }
+    }
+
+    function requestRandomWords(
+        bool enableNativePayment
+    ) internal onlyOwner returns (uint256 requestId) {
+        requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: keyHash,
+                subId: s_subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({
+                        nativePayment: enableNativePayment
+                    })
+                )
+            })
         );
-
         s_requests[requestId] = RequestStatus({
             randomWords: new uint256[](0),
             exists: true,
             fulfilled: false
         });
-
         requestIds.push(requestId);
         lastRequestId = requestId;
-
-        mintRequests[requestId] = MintRequest(msg.sender, nftType, msg.value);
-
-        emit MintStarted(requestId, msg.sender);
+        return requestId;
     }
 
     function fulfillRandomWords(
         uint256 _requestId,
-        uint256[] memory _randomWords
+        uint256[] calldata _randomWords
     ) internal override {
         require(s_requests[_requestId].exists, "request not found");
         MintRequest memory req = mintRequests[_requestId];
@@ -157,7 +176,7 @@ contract Marketplace is VRFConsumerBaseV2, ReentrancyGuard, UUPSUpgradeable, Con
         Listing memory listing = listings[listingId];
 
         uint256 currentPrice = calculatePrice(listingId);
-        require(msg.value == currentPrice, "Insufficient funds");
+        require(msg.value >= currentPrice, "Insufficient funds");
 
         curves[listing.nftContract].totalListed -= 1;
         totalListed -= 1;

@@ -9,9 +9,10 @@ import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol
 contract CardNFT is ERC721, Ownable {
     using Strings for uint256;
 
+    enum Rarity { Common, Rare, Epic }
+
     struct Card {
         string card;
-        uint256 num;
     }
 
     mapping(uint256 _tokenId => Card) public _cardData;
@@ -85,7 +86,16 @@ contract CardNFT is ERC721, Ownable {
             }
         }
 
-        return ((52 - index) + data.num / 10000) * 1000000;
+        uint256 basePrice = ((51-index) % 13+1) * 1000000;
+        uint256 rarityBonus = 0;
+
+        if (_getRarity(data.card) == Rarity.Epic) {
+            rarityBonus = 2*basePrice ; // +200%
+        } else if (_getRarity(data.card) == Rarity.Rare) {
+            rarityBonus = basePrice / 50; // +50%
+        }
+
+        return basePrice + rarityBonus;
     }
 
     function mint(address to, Card memory data) public onlyOwner {
@@ -99,10 +109,23 @@ contract CardNFT is ERC721, Ownable {
         _requireOwned(tokenId);
 
         Card memory card = _cardData[tokenId];
+
         return string(
             abi.encodePacked(
-                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(card.card, "-", card.num.toString()))))
+                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(_getRarity(card.card), "-", card.card))))
             )
         );
+    }
+    
+    function _getRarity(string memory card) internal pure returns (Rarity) {
+        bytes memory cardBytes = bytes(card);
+        bytes1 valueChar = cardBytes[1];
+
+        if (valueChar == 'A' || valueChar == 'K') {
+            return Rarity.Epic;
+        } else if (valueChar == 'Q' || valueChar == 'J') {
+            return Rarity.Rare;
+        }
+        return Rarity.Common;
     }
 }

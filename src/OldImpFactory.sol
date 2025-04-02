@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
-
+/*
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {CardNFT} from "./CardNFT.sol";
 import {ColorNFT} from "./ColorNFT.sol";
@@ -81,3 +81,4 @@ contract NFTFactory is Ownable, AccessControl {
 
     receive() external payable {}
 }
+*/

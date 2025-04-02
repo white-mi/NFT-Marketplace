@@ -63,7 +63,7 @@ contract StarNFT is ERC721, Ownable {
             }
         }
 
-        return ((30 - index) + data.num / 10000) * 1000000;
+        return ((30 - index) + data.num / 10) * 1000000;
     }
 
     function mint(address to, Star memory data) public onlyOwner {
