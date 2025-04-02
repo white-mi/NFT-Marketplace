@@ -7,7 +7,6 @@ import {IERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/IERC
 import {Math} from "../lib/openzeppelin-contracts/contracts/utils/math/Math.sol";
 import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 import {UUPSUpgradeable} from "../lib/openzeppelin-contracts/contracts/proxy/utils/UUPSUpgradeable.sol";
-
 import {NFTFactory} from "./FactoryNFT.sol";
 
 contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable {
@@ -43,7 +42,7 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
     uint256 public s_subscriptionId;
     uint256[] public requestIds;
     uint256 public lastRequestId;
-    uint32 internal callbackGasLimit = 100000;
+    uint32 internal callbackGasLimit = 500000;
     uint16 internal requestConfirmations = 3;
     uint32 internal numWords = 2;
     mapping(uint256 => MintRequest) public mintRequests;
@@ -57,6 +56,7 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
     bytes32[] public allListings;
     uint256 public platformFee = 250;
     uint256 public totalListed = 0;
+    uint256 public allTotalMinted = 0;
 
     event MintStarted(uint256 requestId, address indexed user);
     event NFTMinted(address indexed owner, string nftType, uint256 tokenId);
@@ -64,11 +64,12 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
     event NFTBought(bytes32 listingId, address indexed buyer, uint256 price);
     event NFTReturned(bytes32 listingId, address indexed keeper);
 
-    constructor(address payable _factory, uint256 subscriptionId)
+    constructor(address _factory, uint256 subscriptionId)
         VRFConsumerBaseV2Plus(
-            0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B // VRF Coordinator
+            0x9DdfaCa8183c41ad55329BdeeD9F6A8d53168B1B 
         )
     {
+        keyHash = 0x787d74caea10b2b357790d5b5247c2f63d1d91572a9846f780606e4d953677ae;
         s_subscriptionId = subscriptionId;
         factory = NFTFactory(_factory);
         _initCurves();
@@ -76,38 +77,52 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
     }
 
     function _initCurves() internal {
-        curves[factory.colorNFT()] = Curve(200, 0, 0);
-        curves[factory.cardNFT()] = Curve(180, 0, 0);
-        curves[factory.starNFT()] = Curve(160, 0, 0);
+        curves[factory.colorNFT()] = Curve(2000, 0, 0);
+        curves[factory.cardNFT()] = Curve(1800, 0, 0);
+        curves[factory.starNFT()] = Curve(1600, 0, 0);
     }
 
     function _initMints() internal {
         mintprice["color"] = 16764450 * curves[factory.colorNFT()].exponent / (curves[factory.colorNFT()].exponent - 2);
-        mintprice["card"] = 19300000 * curves[factory.cardNFT()].exponent / (curves[factory.cardNFT()].exponent - 2);
+        mintprice["card"] = 33000000 * curves[factory.cardNFT()].exponent / (curves[factory.cardNFT()].exponent - 2);
         mintprice["star"] = 20000000 * curves[factory.starNFT()].exponent / (curves[factory.starNFT()].exponent - 2);
     }
 
+    
     function mintNFT(string memory nftType) external payable nonReentrant {
+        require(allTotalMinted <= 10000, "Mint is not available now!");
+
+        address nftContract = _getContractByType(nftType);
+        require(nftContract != address(0), "Invalid NFT type");
+        
         uint256 currentPrice = getMintPrice(nftType);
         require(msg.value >= currentPrice, "Insufficient funds");
 
-        uint256 requestID = requestRandomWords(true);
+        uint256 requestID = requestRandomWords(false);
         mintRequests[requestID] = MintRequest(msg.sender, nftType, msg.value);
+        allTotalMinted += 1;
+        curves[nftContract].totalMinted += 1;
 
         if (msg.value > currentPrice) {
             payable(msg.sender).transfer(msg.value - currentPrice);
         }
+        payable(owner()).transfer( currentPrice);
         emit MintStarted(requestID, msg.sender);
     }
 
+    
+
     function getMintPrice(string memory nftType) public view returns (uint256) {
+        require(allTotalMinted <= 10000, "Mint is not available now!");
         address nftContract = _getContractByType(nftType);
         require(nftContract != address(0), "Invalid NFT type");
 
-        if (totalListed > 1000) {
+        if (allTotalMinted > 1000 && allTotalMinted <= 1445) {
             return mintprice[nftType];
+        } else if (allTotalMinted <= 1000) {
+            return (mintprice[nftType] / 5) + (mintprice[nftType] / 1250) * allTotalMinted;
         } else {
-            return (mintprice[nftType] / 5) + (mintprice[nftType] / 1250) * totalListed;
+            return 10 * mintprice[nftType] - (4000 * mintprice[nftType]) / (allTotalMinted - 1000);
         }
     }
 
@@ -146,10 +161,9 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
         MintRequest memory req = mintRequests[_requestId];
         s_requests[_requestId].fulfilled = true;
         s_requests[_requestId].randomWords = _randomWords;
-        uint256 randomness = _randomWords[0]+_randomWords[1];
+        uint256 randomness = _randomWords[0] + _randomWords[1];
         uint256 tokenId = factory.createNFT(req.nftType, req.user, randomness);
 
-        payable(owner()).transfer(req.paidAmount);
         delete mintRequests[_requestId];
 
         emit NFTMinted(req.user, req.nftType, tokenId);
@@ -190,6 +204,7 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
         delete listingIndex[listingId];
 
         IERC721(listing.nftContract).transferFrom(listing.seller, msg.sender, listing.tokenId);
+        
 
         uint256 fee = (currentPrice * platformFee) / 10000;
         payable(owner()).transfer(fee);
@@ -235,16 +250,27 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
         Listing memory listing = listings[listingId];
         Curve memory curve = curves[listing.nftContract];
         uint256 basePrice = factory.getBasePrice(listing.nftType, listing.tokenId);
-        uint256 exp = 1000000;
-        for (uint256 i = 0; i < curve.totalMinted - curve.totalListed; i++) {
-            exp = exp * curve.exponent;
-            exp = exp / (curve.exponent - 2);
-            if (exp > 10000000) {
-                exp = 10000000;
-                break;
+        uint256 tenMill = 100000000;
+
+        if (allTotalMinted <= 10000) {
+            uint256 exp = tenMill;
+            for (uint256 i = 0; i < curve.totalMinted - curve.totalListed; i++) {
+                exp = exp * curve.exponent;
+                exp = exp / (curve.exponent - 2);
+                if (exp > 10 * tenMill) {
+                    exp = 10 * tenMill;
+                    break;
+                }
             }
+            return basePrice * exp / tenMill;
+        } else {
+            uint256 exp = tenMill;
+            for (uint256 i = 0; i < curve.totalListed; i++) {
+                exp = exp * curve.exponent;
+                exp = exp / (curve.exponent - 2);
+            }
+            return basePrice * exp / tenMill;
         }
-        return basePrice * exp / 1000000;
     }
 
     function getRequestStatus(
@@ -268,3 +294,4 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
 
     function _authorizeUpgrade(address) internal override onlyOwner {}
 }
+
