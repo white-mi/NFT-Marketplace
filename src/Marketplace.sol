@@ -90,7 +90,7 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
 
     
     function mintNFT(string memory nftType) external payable nonReentrant {
-        require(allTotalMinted <= 10000, "Mint is not available now!");
+        require(allTotalMinted <= 10000, "Mint is not available yet!");
 
         address nftContract = _getContractByType(nftType);
         require(nftContract != address(0), "Invalid NFT type");
@@ -106,14 +106,14 @@ contract Marketplace is VRFConsumerBaseV2Plus, ReentrancyGuard, UUPSUpgradeable 
         if (msg.value > currentPrice) {
             payable(msg.sender).transfer(msg.value - currentPrice);
         }
-        payable(owner()).transfer( currentPrice);
+        payable(owner()).transfer(currentPrice);
         emit MintStarted(requestID, msg.sender);
     }
 
     
 
     function getMintPrice(string memory nftType) public view returns (uint256) {
-        require(allTotalMinted <= 10000, "Mint is not available now!");
+        require(allTotalMinted <= 10000, "Mint is not available yet!");
         address nftContract = _getContractByType(nftType);
         require(nftContract != address(0), "Invalid NFT type");
 
