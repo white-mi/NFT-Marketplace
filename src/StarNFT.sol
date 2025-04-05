@@ -1,27 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {ERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {MarketNFT} from "./MarketNFT.sol";
 import {Base64} from "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
-contract StarNFT is ERC721, Ownable {
+contract StarNFT is MarketNFT {
     using Strings for uint256;
 
-    struct Star {
-        string star;
-        uint256 num;
-    }
-
-    mapping(uint256 _tokenId => Star) public _starData;
-    mapping(uint256 _tokenId => uint256) public _price;
-    uint256 public _tokenId;
-
-    constructor(address owner) ERC721("StarNFT", "STAR") Ownable(owner) {}
-
-    function get_price(Star memory data) internal pure returns (uint256) {
-        string[30] memory stars = [
+    string[30] private stars = [
             "VEGA",
             "SIRIUS",
             "ALPHA",
@@ -54,10 +41,22 @@ contract StarNFT is ERC721, Ownable {
             "POLLUX"
         ];
 
+    constructor(string memory name, 
+        string memory symbol,
+        uint256 _exponentCurve,
+        uint256 _meanPrice,
+        address owner
+    ) MarketNFT(name, symbol,
+         _exponentCurve,
+         _meanPrice,
+         owner) {}
+
+    function get_price(Info memory data) internal view override returns (uint256) {
+
         uint256 index = 0;
 
         for (uint256 i = 0; i < 30; i++) {
-            if (keccak256(abi.encodePacked(stars[i])) == keccak256(abi.encodePacked(data.star))) {
+            if (keccak256(abi.encodePacked(stars[i])) == keccak256(abi.encodePacked(data.str))) {
                 index = i;
                 break;
             }
@@ -66,21 +65,13 @@ contract StarNFT is ERC721, Ownable {
         return ((30 - index) + data.num / 10000) * 1000000;
     }
 
-    function mint(address to, Star memory data) public onlyOwner {
-        _starData[_tokenId] = data;
-        _price[_tokenId] = get_price(data);
-        _mint(to, _tokenId);
-        _tokenId++;
+    function generateInfo(uint256 randomness) public view override onlyOwner returns (Info memory) {
+        uint256 starIndex = randomness % 30;
+        uint256 someRand = uint256(keccak256(abi.encodePacked(block.timestamp, starIndex, randomness))) % 100000;
+        return Info(stars[starIndex], someRand);
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireOwned(tokenId);
-
-        Star memory star = _starData[tokenId];
-        return string(
-            abi.encodePacked(
-                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(star.star, "-", star.num.toString()))))
-            )
-        );
+    function _generateTokenURI(Info memory data) internal pure override returns (string memory) {
+        return string.concat(data.str, "-",  data.num.toString());
     }
 }

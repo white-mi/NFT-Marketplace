@@ -1,27 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {ERC721} from "../lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import {MarketNFT} from "./MarketNFT.sol";
 import {Base64} from "../lib/openzeppelin-contracts/contracts/utils/Base64.sol";
 import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
-contract CardNFT is ERC721, Ownable {
+contract CardNFT is MarketNFT {
     using Strings for uint256;
 
-    struct Card {
-        string card;
-        uint256 num;
-    }
+    string[4] private SUITS = ["S", "H", "D", "C"];
+    string[13] private VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
-    mapping(uint256 _tokenId => Card) public _cardData;
-    mapping(uint256 _tokenId => uint256) public _price;
-    uint256 public _tokenId;
-
-    constructor(address owner) ERC721("CardNFT", "CARD") Ownable(owner) {}
-
-    function get_price(Card memory data) internal pure returns (uint256) {
-        string[52] memory cards = [
+    string[52] private cards = [
             "SA",
             "SK",
             "SQ",
@@ -76,33 +66,37 @@ contract CardNFT is ERC721, Ownable {
             "C2"
         ];
 
-        uint256 index = 0;
 
+    constructor(string memory name, 
+        string memory symbol,
+        uint256 _exponentCurve,
+        uint256 _meanPrice,
+        address owner
+    ) MarketNFT(name, symbol,
+         _exponentCurve,
+         _meanPrice,
+         owner) {}
+
+    function get_price(Info memory data) internal view override returns  (uint256) {
+        uint256 index = 0;
         for (uint256 i = 0; i < 52; i++) {
-            if (keccak256(abi.encodePacked(cards[i])) == keccak256(abi.encodePacked(data.card))) {
+            if (keccak256(abi.encodePacked(cards[i])) == keccak256(abi.encodePacked(data.str))) {
                 index = i;
                 break;
             }
         }
-
-        return (((51- index)%13 + 1)*4 + data.num / 10000) * 1000000;
+        return (((51 - index) % 13 + 1) * 4 + data.num / 10000) * 1000000;
     }
 
-    function mint(address to, Card memory data) public onlyOwner {
-        _cardData[_tokenId] = data;
-        _price[_tokenId] = get_price(data);
-        _mint(to, _tokenId);
-        _tokenId++;
+    function generateInfo(uint256 randomness) public view override onlyOwner returns (Info memory) {
+        bytes32 hash = keccak256(abi.encodePacked(randomness, blockhash(block.number - 1)));
+        uint256 suitIndex = uint256(hash) % 4;
+        uint256 valueIndex = (uint256(hash) >> 8) % 13; 
+        uint256 someRand = (uint256(hash) >> 16) % 100000; 
+        return Info(string.concat(SUITS[suitIndex], VALUES[valueIndex]), someRand);
     }
 
-    function tokenURI(uint256 tokenId) public view override returns (string memory) {
-        _requireOwned(tokenId);
-
-        Card memory card = _cardData[tokenId];
-        return string(
-            abi.encodePacked(
-                "data:json;base64,", Base64.encode(bytes(string(abi.encodePacked(card.card, "-", card.num.toString()))))
-            )
-        );
+    function _generateTokenURI(Info memory data) internal pure override returns (string memory) {
+        return string.concat(data.str, "-",  data.num.toString());
     }
 }
