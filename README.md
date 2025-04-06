@@ -11,10 +11,12 @@
 ## Архитектура 
 ```mermaid
 graph TD
-    Marketplace --> Factory
-    Factory --> MarketNFT[NFT Template]
-    MarketNFT --> StarNFT
-    MarketNFT --> CustomNFT
+    Marketplace -- Factory
+    Factory -- MarketNFT[NFT Templates]
+    MarketNFT -- StarNFT
+    MarketNFT -- ColorNFT
+    MarketNFT -- CardNFT
+    MarketNFT -- CustomNFT
 ```
 
 ## Ключевые особенности
