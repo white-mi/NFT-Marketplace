@@ -12,7 +12,7 @@
 ```mermaid
 graph TD
     Marketplace --> Factory
-    Factory --> MarketNFT[NFT Templates]
+    Factory --> MarketNFT
     MarketNFT --> StarNFT
     MarketNFT --> ColorNFT
     MarketNFT --> CardNFT
@@ -81,8 +81,8 @@ marketplace.mintNFT("StarNFT", {value: currentPrice});
 ### Динамическое ценообразование
 ```math
 Price = BasePrice × \begin{cases} 
-CurveExp^{(Minted - Listed)} & \text{if } TotalMinted ≤ 10000 \\
-CurveExp^{Listed} & \text{otherwise}
+min(CurveExp^{(Minted - Listed)},10) & \text{если } TotalMinted ≤ 10000 \\
+CurveExp^{Listed} & \text{иначе}
 \end{cases}
 ```
 
@@ -112,6 +112,10 @@ marketplace.addNewNftToMarket(address(newCustomNFT));
 - Защита от повторного входа (nonReentrant)
 - Валидация входящих параметров
 - Система комиссий (2.5% с каждой сделки)
+
+## Локальное тестирование
+
+![Динамика цен NFT](images/dynamics.jpg)
 
 ## Деплой в сеть Sepolia 
 Актуальные адреса контрактов в тестовой сети:
